@@ -14,11 +14,12 @@
 import sys, os, arcpy
 arcpy.env.overwriteOutput = True
 
-# Set input variables (Hard-wired)
-inputFolder = '../Data/ARGOSData'
+# Set input variables (user input)
+inputFolder = arcpy.GetParameterAsText(0)
 inputFiles = os.listdir(inputFolder)
-outputFC = '../Scratch/ARGOStrack.shp'
-outputSR = arcpy.SpatialReference(54002)
+lcFilter = = arcpy.GetParameterAsText(1).split(";")
+outputFC = arcpy.GetParameterAsText(2)
+outputSR = arcpy.GetParameterAsText(3)
 
 ## Prepare a new feature class to which we'll add tracking points
 # Create an empty feature class; requires the path and name as separate parameters
@@ -36,7 +37,7 @@ cur = arcpy.da.InsertCursor(outputFC,['Shape@','TagID','LC','Date'])
 #Loop through each file in the ARGOS folder
 for inputFile in inputFiles:
     #Give some status
-    print("Processing {}".format(inputFile))
+    arcpy.AddMessage("Processing {}".format(inputFile))
     
     #Skip the README.txt file
     if inputFile == 'README.txt': continue
@@ -63,6 +64,11 @@ for inputFile in inputFiles:
             obsDate = lineData[3]
             obsTime = lineData[4]
             obsLC = lineData[7]
+
+            # Check if obsLC in lcFilter
+            if not obsLC in lcFilter:
+                lineString = inputFileObj.readline()
+                continue
             
             # Extract location info from the next line
             line2String = inputFileObj.readline()
@@ -85,7 +91,7 @@ for inputFile in inputFiles:
                     obsLat = float(obsLat[:-1])
                 else:
                     obsLat = float(obsLat[:-1] * -1)
-                if obsLon[-1] == 'E':
+                if obsLon[-1] == 'W':
                     obsLon = float(obsLon[:-1])
                 else:
                     obsLon = float(obsLon[:-1] * -1)
@@ -105,7 +111,7 @@ for inputFile in inputFiles:
             #Handle any error
             except Exception as e:
                 pass
-                #print("  Error adding record {} to the output".format(tagID))
+                #arcpy.AddWarning("  Error adding record {} to the output".format(tagID))
 
         # Move to the next line so the while loop progresses
         lineString = inputFileObj.readline()
